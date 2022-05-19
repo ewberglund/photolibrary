@@ -1,25 +1,48 @@
 Param(
-	[Parameter(Mandatory = $true)]
-	[String]
-	$ImageFolder
+    [Parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
+    [string]
+    $RootPath
 )
 
-foreach ($file in Get-ChildItem -Recurse -File $ImageFolder) {
-	$hash = (Get-FileHash $file).Hash
+function Process-Folder {
+    param (
+	[string]$FolderToProcess
+    )
 
-	if ($file.Name -Match $hash) {
-		continue
-	}
+    foreach ($Directory in Get-ChildItem -Directory $FolderToProcess) {
+	Process-Folder $file.Name
+    }
 
-	$extension = ($file.Name -split "\.")[-1]
+    $ExistingNames = Get-AzStorageBlob -Container $ContainerName -Context $Context | Select-Object -Property Name
+
+    # Download existing index.html
+    $HtmlPath = ""
+
+    foreach ($File in Get-ChildItem -File $ImageFolder) {
+	$Hash = (Get-FileHash $File).Hash
+	$Extension = ($File.Name -split "\.")[-1]
 
 	if ($extension -Match "html") {
-		continue
+	    continue
 	}
 
-	Rename-Item -Path $file -NewName "$hash.$extension"
-	$newpath = $file.Directory.FullName -replace [Regex]::Escape("$ImageFolder\"), "./"
+	$NewName = $Hash + "." + $Extension
 
-	$html = "<img src=`"$newpath/$hash.$extension`"/><p>$($file.Name)</p>"
-	Add-Content -Path "$ImageFolder/index.html" -Value $html
+	if ($ExistingNames -contains $NewName) {
+	    continue
+	}
+
+	# Upload file
+
+	$html = "<img src=`"./$NewName`"/><p>$($File.Name)</p>"
+	Add-Content -Path $HtmlPath -Value $html
+    }
 }
+
+# Install Azure client
+if (-not (Get-Module -ListAvailable -Name Az)) {
+    Install-Module -Name Az -Scope CurrentUser -Repository PSGallery -Force
+} 
+
+Process-Folder $RootPath
