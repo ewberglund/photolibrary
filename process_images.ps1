@@ -1,49 +1,23 @@
-Param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]
-    $RootPath
+param(
+    [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string] $RootPath,
+    [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string]$StorageKey,
+    [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string]$StorageName,
+    [Parameter(Mandatory = $true)] [ValidateNotNullOrEmpty()] [string]$AzureContainerName
 )
 
-Param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]
-    $StorageKey
-)
-
-Param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]
-    $StorageName
-)
-
-Param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string]
-    $AzureContainerName
-)
-
-function Process-Folder {
-    param (
-	[string]$FolderToProcess
-    )
-
-    param (
-	$Context
-    )
+function Process-Folder([string]$LocalPath, [string]$BlobPath, $Context) {
 
     foreach ($Directory in Get-ChildItem -Directory $FolderToProcess) {
-	Process-Folder $file.Name $Context
+	$NewLocalPath = $LocalPath + "/" + $Directory.Name
+	$NewBlobPath = $BlobPath + "/" + $Directory.Name
+	Process-Folder -FolderToProcess $NewLocalPath -BlobPath $NewBlobPath -Context $Context
     }
 
     $ExistingNames = Get-AzStorageBlob -Container $AzureContainerName -Context $Context | Select-Object -Property Name
 
     # Download existing index.html
-    $HtmlPath = "./index.html"
-    Get-AzStorageBlobContent -Context $Context -Container $AzureContainerName -Blob $HtmlBlobName -Destination $RootPath -Force
+    $HtmlPath = "$FolderToProcess/index.html"
+    Get-AzStorageBlobContent -Context $Context -Container $AzureContainerName -Blob $HtmlBlobName -Destination $FolderToProcess -Force
 
     foreach ($File in Get-ChildItem -File $ImageFolder) {
 	$Hash = (Get-FileHash $File).Hash
@@ -59,12 +33,14 @@ function Process-Folder {
 	    continue
 	}
 
-	# Upload file
-	$BlobName = "full/path/folder/structure/file.jpg"
+	# Upload Photo
+	$Url = $FolderToProcess + '/' + $NewName
 
-	$Html = "<img src=`"./$NewName`"/><p>$($File.Name)</p>"
+	$Html = '<img src="$Url"/><p>$($File.Name)</p>'
 	Add-Content -Path $HtmlPath -Value $Html
     }
+
+    # Upload HTML File
 }
 
 # Install Azure client
@@ -76,4 +52,4 @@ Connect-AzAccount
 
 $StorageContext = New-AzStorageContext -StorageAccountName $StorageName -StorageAccountKey $StorageKey
 
-Process-Folder $RootPath $StorageContext
+Process-Folder -LocalPath $RootPath -BlobPath "" -Context $StorageContext
