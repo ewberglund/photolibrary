@@ -24,13 +24,18 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
     if ($blob) {
 	Get-AzStorageBlobContent -Context $Context -CloudBlob $blob.ICloudBlob -Destination $LocalPath -Force
     }
+    else {
+	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title></head><body><hr /></body></html>"
+    }
 
     foreach ($Directory in Get-ChildItem -Directory $LocalPath) {
 	$NewLocalPath = $LocalPath + $Directory.Name + "/"
 	$NewBlobPath = $BlobPath + "/" + $Directory.Name
 
-	$LinkHtml = "<a href=`"$baseUrl$NewBlobPath/index.html`">$($Directory.Name)</a>"
-	Add-Content -Path $HtmlPath -Value $LinkHtml
+	$LinkHtml = "<p><a href=`"$baseUrl$NewBlobPath/index.html`">$($Directory.Name)</a></p>"
+	if (Select-String -Path $HtmlPath -Pattern $LinkHtml -NotMatch) {
+	    (Get-Content $HtmlPath).replace('<hr />', "$LinkHtml<hr />") | Set-Content $HtmlPath
+	}
 
 	Process-Folder -LocalPath $NewLocalPath -BlobPath $NewBlobPath -Context $Context -AzureContainerName $AzureContainerName
     }
@@ -45,22 +50,23 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 	    continue
 	}
 
-	$NewName = $Hash + "." + $Extension
+	$newName = $Hash + "." + $Extension
 
 	if ($ExistingNames -contains $NewName) {
 	    continue
 	}
 
+	$blobName = "$blobPath/$newName"
 	# Upload Photo
-	$blobName = "./$NewName"
-
-	$ImageHtml = "<img src=`"$blobName`"/><p>$($File.Name)</p>"
-	Add-Content -Path $HtmlPath -Value $ImageHtml
+	$imageHtml = "<img src=`"./$blobName`"/><p>$($File.Name)</p>"
+	(Get-Content $htmlPath).replace('<hr />', "<hr />$imageHtml") | Set-Content $htmlPath
 
 	echo "Uploading image file $($file.Name)"
 
 	Set-AzStorageBlobContent -Container $AzureContainerName -File $file -Blob $blobName -Context $Context
     }
+
+    Add-Content -Path $HtmlPath -Value "</body></html>"
 
     $blobName = "$BlobPath/index.html"
     echo "Uploading html file $blobName"
