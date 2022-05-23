@@ -6,7 +6,6 @@ param(
 )
 
 function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
-
     echo "Processing folder $LocalPath"
 
     # Download existing index.html
@@ -28,11 +27,16 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title></head><body><hr /></body></html>"
     }
 
+
+    $baseUrl = "https://bdljphotos.z5.web.core.windows.net/main"
+
     foreach ($Directory in Get-ChildItem -Directory $LocalPath) {
 	$NewLocalPath = $LocalPath + $Directory.Name + "/"
 	$NewBlobPath = $BlobPath + "/" + $Directory.Name
 
-	$LinkHtml = "<p><a href=`"$baseUrl$NewBlobPath/index.html`">$($Directory.Name)</a></p>"
+	$fullUrl = [System.Net.WebUtility]::UrlEncode("$baseUrl/$NewBlobPath/index.html")
+
+	$LinkHtml = "<p><a href=`"$fullUrl`">$($Directory.Name)</a></p>"
 	if (Select-String -Path $HtmlPath -Pattern $LinkHtml -NotMatch) {
 	    (Get-Content $HtmlPath).replace('<hr />', "$LinkHtml<hr />") | Set-Content $HtmlPath
 	}
@@ -52,28 +56,28 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 
 	$newName = $Hash + "." + $Extension
 
-	if ($ExistingNames -contains $NewName) {
+	$blobName = "$blobPath/$newName"
+
+	if ($ExistingNames -contains $blobName) {
 	    continue
 	}
 
-	$blobName = "$blobPath/$newName"
 	# Upload Photo
-	$imageHtml = "<img src=`"./$blobName`"/><p>$($File.Name)</p>"
+	$fullUrl = [System.Net.WebUtility]::UrlEncode("$baseUrl/$blobName")
+	$imageHtml = "<img src=`"$fullUrl`"/><p>$($File.Name)</p>"
 	(Get-Content $htmlPath).replace('<hr />', "<hr />$imageHtml") | Set-Content $htmlPath
 
 	echo "Uploading image file $($file.Name)"
 
-	Set-AzStorageBlobContent -Container $AzureContainerName -File $file -Blob $blobName -Context $Context
+	Set-AzStorageBlobContent -Container $AzureContainerName -File $file -Blob $blobName -Context $Context -Force
     }
-
-    Add-Content -Path $HtmlPath -Value "</body></html>"
 
     $blobName = "$BlobPath/index.html"
     echo "Uploading html file $blobName"
 
     # Upload HTML File
     if ([System.IO.File]::Exists($htmlPath)) {
-	Set-AzStorageBlobContent -Container $AzureContainerName -File $htmlPath -Blob $blobName -Context $Context
+	Set-AzStorageBlobContent -Container $AzureContainerName -File $htmlPath -Blob $blobName -Context $Context -Force
     }
 }
 
