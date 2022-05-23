@@ -29,13 +29,13 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title></head><body><hr /></body></html>"
     }
 
-    $baseUrl = "https://bdljphotos.z5.web.core.windows.net/main"
+    $baseUrl = "https://bdljphotos.z5.web.core.windows.net/"
 
     foreach ($Directory in Get-ChildItem -Directory $LocalPath) {
 	$NewLocalPath = $LocalPath + $Directory.Name + "/"
 	$NewBlobPath = $BlobPath + "/" + $Directory.Name
 
-	$fullUrl = [System.Net.WebUtility]::UrlEncode("$baseUrl/$NewBlobPath/index.html")
+	$fullUrl = $baseUrl + [System.Net.WebUtility]::HtmlEncode("$NewBlobPath") + "/index.html"
 
 	$LinkHtml = "<p><a href=`"$fullUrl`">$($Directory.Name)</a></p>"
 	if (Select-String -Path $HtmlPath -Pattern $LinkHtml -NotMatch) {
@@ -64,7 +64,7 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 	}
 
 	# Upload Photo
-	$fullUrl = [System.Net.WebUtility]::UrlEncode("$baseUrl/$blobName")
+	$fullUrl = $baseUrl + [System.Net.WebUtility]::HtmlEncode("$blobName")
 	$imageHtml = "<img src=`"$fullUrl`"/><p>$($File.Name)</p>"
 	(Get-Content $htmlPath).replace('<hr />', "<hr />$imageHtml") | Set-Content $htmlPath
 
