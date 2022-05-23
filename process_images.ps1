@@ -21,12 +21,13 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
     $blob = Get-AzStorageBlob -Context $Context -Container $AzureContainerName -Blob $HtmlBlobName -ErrorAction Ignore
 
     if ($blob) {
-	Get-AzStorageBlobContent -Context $Context -CloudBlob $blob.ICloudBlob -Destination $LocalPath -Force
+	echo "Retrieving HTML file $($blob.ICloudBlob) to $LocalPath"
+	Get-AzStorageBlobContent -Context $Context -CloudBlob $blob.ICloudBlob -Destination $HtmlPath -Force
     }
     else {
+	echo "Creating HTML file $HtmlPath"
 	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title></head><body><hr /></body></html>"
     }
-
 
     $baseUrl = "https://bdljphotos.z5.web.core.windows.net/main"
 
