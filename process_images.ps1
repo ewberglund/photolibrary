@@ -78,7 +78,7 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 
     # Upload HTML File
     if ([System.IO.File]::Exists($htmlPath)) {
-	Set-AzStorageBlobContent -Container $AzureContainerName -File $htmlPath -Blob $blobName -Context $Context -Force
+	Set-AzStorageBlobContent -Container $AzureContainerName -File $htmlPath -Blob $blobName -Context $Context -Properties @{"ContentType" = "text/html"} -Force
     }
 }
 
