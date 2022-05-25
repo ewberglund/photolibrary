@@ -26,7 +26,7 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
     }
     else {
 	echo "Creating HTML file $HtmlPath"
-	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title></head><body><hr /></body></html>"
+	Add-Content -Path $HtmlPath -Value "<html><head><title>Photo Album</title>`n<style> img { height: 50px; } </style></head>`n<body>`n<hr />`n</body></html>"
     }
 
     $baseUrl = "https://bdljphotos.z5.web.core.windows.net/"
@@ -37,7 +37,7 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 
 	$fullUrl = $baseUrl + [System.Net.WebUtility]::HtmlEncode("$NewBlobPath") + "/index.html"
 
-	$LinkHtml = "<p><a href=`"$fullUrl`">$($Directory.Name)</a></p>"
+	$LinkHtml = "<p><a href=`"$fullUrl`">$($Directory.Name)</a></p>`n"
 	if (Select-String -Path $HtmlPath -Pattern $LinkHtml -NotMatch) {
 	    (Get-Content $HtmlPath).replace('<hr />', "$LinkHtml<hr />") | Set-Content $HtmlPath
 	}
@@ -65,12 +65,12 @@ function Process-Folder($LocalPath, $BlobPath, $Context, $AzureContainerName) {
 
 	# Upload Photo
 	$fullUrl = $baseUrl + [System.Net.WebUtility]::HtmlEncode("$blobName")
-	$imageHtml = "<img src=`"$fullUrl`"/><p>$($File.Name)</p>"
+	$imageHtml = "`n<a href=`"$fullUrl`"f><img src=`"$fullUrl`"/>`n<p>$($File.Name)</p></a>"
 	(Get-Content $htmlPath).replace('<hr />', "<hr />$imageHtml") | Set-Content $htmlPath
 
 	echo "Uploading image file $($file.Name)"
 
-	Set-AzStorageBlobContent -Container $AzureContainerName -File $file -Blob $blobName -Context $Context -Force
+	Set-AzStorageBlobContent -Container $AzureContainerName -File $file -Blob $blobName -Properties @{"ContentType" = "image/jpg"} -Context $Context -Force
     }
 
     $blobName = "$BlobPath/index.html"
